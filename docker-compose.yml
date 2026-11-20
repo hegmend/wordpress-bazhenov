@@ -1,0 +1,58 @@
+name: wordpress-bazhenov-win
+
+services:
+  db-bazhenov:
+    image: mysql:8.0
+    container_name: db-bazhenov
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - dbdata:/var/lib/mysql
+    command: '--default-authentication-plugin=mysql_native_password'
+    networks:
+      - app-network
+
+  wordpress-bazhenov:
+    depends_on:
+      - db-bazhenov
+    image: wordpress:5.1.1-fpm-alpine
+    container_name: wordpress-bazhenov
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      WORDPRESS_DB_HOST: db-bazhenov:3306
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+    volumes:
+      - wordpress:/var/www/html
+    networks:
+      - app-network
+
+  webserver-bazhenov:
+    depends_on:
+      - wordpress-bazhenov
+    build: ./nginx-conf
+    image: webserver-bazhenov-win
+    container_name: webserver-bazhenov
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - wordpress:/var/www/html
+    networks:
+      - app-network
+
+volumes:
+  wordpress:
+  dbdata:
+
+networks:
+  app-network:
+    driver: bridge
